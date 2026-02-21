@@ -1,0 +1,69 @@
+# ==========================
+# Go Build and Modules
+# ==========================
+/bin/
+/dist/
+/out/
+/coverage/
+*.test
+*.exe
+*.out
+*.log
+
+# Go modules
+/go.sum
+/vendor/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Docker and Compose
+docker-compose.override.yml
+*.pid
+*.sock
+*.tar
+*.gz
+
+# Kafka / Cassandra local data
+/data/
+kafka-logs/
+cassandra-data/
+tmp/
+logs/
+
+# Test output and cache
+/testdata/
+*.coverprofile
+*.cov
+*.prof
+*.pprof
+*.trace
+
+# Local development scripts
+/scripts/local/
+.local/
+*.sh~
+
+# Node-related (if UI parts are added later)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Go workspaces (Go 1.18+)
+go.work
+go.work.sum
+certs/

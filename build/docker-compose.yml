@@ -1,0 +1,86 @@
+version: "3.8"
+
+services:
+  # Kafka broker service
+  kafka:
+    image: apache/kafka:latest
+    container_name: broker
+    ports:
+      - "9092:9092" # Expose Kafka to host
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:29093
+      KAFKA_LISTENERS: PLAINTEXT://broker:29092,CONTROLLER://broker:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk # unique Kafka cluster ID
+
+  # Cassandra database service
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra
+    ports:
+      - "9042:9042" # CQL port for host access
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe cluster'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # Main application server
+  server:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+    container_name: server
+    ports:
+      - "8080:8080" # HTTPS server port
+    environment:
+      MODE: server
+      KAFKA_BROKER: kafka:29092
+      CASSANDRA_HOST: cassandra
+      SERVER_ADDR: :8080
+      USE_TLS: "true"
+    depends_on:
+      kafka:
+        condition: service_started
+      cassandra:
+        condition: service_healthy
+
+  # Background worker service
+  worker:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+    container_name: worker
+    environment:
+      MODE: worker
+      KAFKA_BROKER: kafka:29092
+      CASSANDRA_HOST: cassandra
+    depends_on:
+      kafka:
+        condition: service_started
+      cassandra:
+        condition: service_healthy
+
+  # Kafka UI web interface for monitoring
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8081:8080" # Host port 8081 mapped to UI internal port 8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_READONLY: "false"
+    depends_on:
+      kafka:
+        condition: service_started
